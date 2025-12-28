@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termux Control Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #09090b;
+            --card: #18181b;
+            --border: #27272a;
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --text: #e4e4e7;
+            --text-light: #a1a1aa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ===== NAVBAR ===== */
+        .navbar {
+            background: linear-gradient(145deg, var(--card), #1f1f23);
+            border-bottom: 1px solid var(--border);
+            padding: 18px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-logo {
+            font-size: 24px;
+            color: var(--primary);
+        }
+
+        .nav-title h2 {
+            font-size: 22px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--primary), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-title p {
+            font-size: 12px;
+            color: var(--text-light);
+            letter-spacing: 0.5px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background-color: var(--danger);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-dot.connected {
+            background-color: var(--success);
+            box-shadow: 0 0 15px var(--success);
+        }
+
+        .status-dot.connected::after {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border-radius: 50%;
+            border: 1px solid var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+        }
+
+        .logout-btn {
+            padding: 10px 20px;
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* ===== MAIN CONTAINER ===== */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        /* ===== COMMAND PANEL ===== */
+        .command-panel {
+            background: linear-gradient(145deg, var(--card), #1f1f23);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 35px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .command-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--success), var(--warning), var(--danger));
+            border-radius: 20px 20px 0 0;
+        }
+
+        .panel-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .panel-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .panel-header p {
+            color: var(--text-light);
+            font-size: 15px;
+        }
+
+        /* ===== COMMAND CARDS ===== */
+        .command-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .command-card {
+            background: linear-gradient(145deg, rgba(39, 39, 42, 0.8), rgba(63, 63, 70, 0.4));
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s;
+        }
+
+        .command-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 15px 35px rgba(139, 92, 246, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .icon-join { background: rgba(34, 197, 94, 0.1); color: var(--success); }
+        .icon-pro { background: rgba(139, 92, 246, 0.1); color: var(--primary); }
+        .icon-test { background: rgba(59, 130, 246, 0.1); color: var(--info); }
+        .icon-leave { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+        .card-title h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .card-title p {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        /* ===== INPUT FIELDS ===== */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            color: var(--text-light);
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        .quantity-input {
+            width: 120px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .quantity-input:focus {
+            border-color: var(--primary);
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 16px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.3s;
+            font-size: 15px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-join {
+            background: linear-gradient(135deg, var(--success), #16a34a);
+        }
+
+        .btn-join:hover {
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3);
+        }
+
+        .btn-pro {
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+        }
+
+        .btn-pro:hover {
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-test {
+            background: linear-gradient(135deg, var(--info), #2563eb);
+        }
+
+        .btn-test:hover {
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-leave {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+        }
+
+        .btn-leave:hover {
+            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn.loading {
+            opacity: 0.8;
+            cursor: not-allowed;
+        }
+
+        .btn.loading .btn-text {
+            opacity: 0.7;
+        }
+
+        /* ===== LOG OUTPUT ===== */
+        .log-panel {
+            background: linear-gradient(145deg, var(--card), #1f1f23);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .log-header h3 {
+            font-size: 18px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .log-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-controls button {
+            padding: 8px 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .log-controls button:hover {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary);
+        }
+
+        .log-output {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            height: 250px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .log-entry:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: var(--text-light);
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .log-message {
+            color: var(--text);
+        }
+
+        .log-success .log-message {
+            color: var(--success);
+        }
+
+        .log-error .log-message {
+            color: var(--danger);
+        }
+
+        .log-warning .log-message {
+            color: var(--warning);
+        }
+
+        .log-info .log-message {
+            color: var(--info);
+        }
+
+        /* ===== STATS PANEL ===== */
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(145deg, rgba(39, 39, 42, 0.8), rgba(63, 63, 70, 0.4));
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .stat-join { color: var(--success); }
+        .stat-pro { color: var(--primary); }
+        .stat-test { color: var(--info); }
+        .stat-leave { color: var(--danger); }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ===== LOADER ===== */
+        .loader {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ===== NOTIFICATION ===== */
+        .notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 20px 25px;
+            border-radius: 12px;
+            background: linear-gradient(145deg, var(--card), #1f1f23);
+            border: 1px solid var(--border);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 1000;
+            transform: translateX(150%);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left: 5px solid var(--success);
+        }
+
+        .notification.error {
+            border-left: 5px solid var(--danger);
+        }
+
+        .notification.warning {
+            border-left: 5px solid var(--warning);
+        }
+
+        .notification-icon {
+            font-size: 24px;
+        }
+
+        .notification.success .notification-icon {
+            color: var(--success);
+        }
+
+        .notification.error .notification-icon {
+            color: var(--danger);
+        }
+
+        .notification.warning .notification-icon {
+            color: var(--warning);
+        }
+
+        /* ===== MODAL ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, var(--card), #1f1f23);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 35px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .modal-header h3 {
+            font-size: 24px;
+            color: var(--danger);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .modal-body {
+            margin-bottom: 30px;
+        }
+
+        .modal-body p {
+            color: var(--text-light);
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 14px 28px;
+            min-width: 120px;
+        }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .nav-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .main-container {
+                padding: 20px;
+            }
+
+            .command-panel {
+                padding: 25px;
+            }
+
+            .panel-header h1 {
+                font-size: 26px;
+            }
+
+            .command-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-panel {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-log {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-log i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        .log-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-output::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .log-output::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        .log-output::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-hover);
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== NAVBAR ===== -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <div class="nav-logo">
+                <i class="fas fa-terminal"></i>
+            </div>
+            <div class="nav-title">
+                <h2>Termux Control Panel</h2>
+                <p>Remote Command Center</p>
+            </div>
+        </div>
+
+        <div class="nav-right">
+            <div class="status-indicator">
+                <div id="connDot" class="status-dot"></div>
+                <span id="connStatus">Connecting to server...</span>
+            </div>
+
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div style="color: var(--text-light); font-size: 14px;">
+                    <div id="userName">Guest User</div>
+                    <div style="font-size: 11px;" id="userRole">User</div>
+                </div>
+            </div>
+
+            <button class="logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </nav>
+
+    <!-- ===== MAIN CONTAINER ===== -->
+    <div class="main-container">
+        <!-- Command Panel -->
+        <div class="command-panel">
+            <div class="panel-header">
+                <h1>Command Control Center</h1>
+                <p>Send commands to Termux devices. Enter link and quantity, then execute command.</p>
+            </div>
+
+            <!-- Command Cards Grid -->
+            <div class="command-grid">
+                <!-- JOIN Command Card -->
+                <div class="command-card">
+                    <div class="card-header">
+                        <div class="card-icon icon-join">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div class="card-title">
+                            <h3>JOIN COMMAND</h3>
+                            <p>Join IDs to target channel</p>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label><i class="fas fa-link"></i> Target Link</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="joinLink" placeholder="t.me/channel_name" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fas fa-hashtag"></i> Quantity (IDs)</label>
+                        <input type="number" class="quantity-input" id="joinQty" value="50" min="1" max="1000" placeholder="50">
+                    </div>
+
+                    <button class="btn btn-join" onclick="sendCommand('join')" id="joinBtn">
+                        <div class="loader" id="joinLoader"></div>
+                        <span class="btn-text">SEND JOIN COMMAND</span>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+
+                <!-- PRO Command Card -->
+                <div class="command-card">
+                    <div class="card-header">
+                        <div class="card-icon icon-pro">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="card-title">
+                            <h3>PRO MODE</h3>
+                            <p>Advanced joining with pro features</p>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label><i class="fas fa-link"></i> Target Link</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="proLink" placeholder="t.me/channel_name" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fas fa-hashtag"></i> Quantity (IDs)</label>
+                        <input type="number" class="quantity-input" id="proQty" value="50" min="1" max="1000" placeholder="50">
+                    </div>
+
+                    <button class="btn btn-pro" onclick="sendCommand('pro')" id="proBtn">
+                        <div class="loader" id="proLoader"></div>
+                        <span class="btn-text">ACTIVATE PRO MODE</span>
+                        <i class="fas fa-bolt"></i>
+                    </button>
+                </div>
+
+                <!-- TEST Command Card -->
+                <div class="command-card">
+                    <div class="card-header">
+                        <div class="card-icon icon-test">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <div class="card-title">
+                            <h3>TEST LINK</h3>
+                            <p>Test channel link before joining</p>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label><i class="fas fa-link"></i> Target Link</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="testLink" placeholder="t.me/channel_name" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fas fa-hashtag"></i> Test Quantity</label>
+                        <input type="number" class="quantity-input" id="testQty" value="1" min="1" max="10" placeholder="1">
+                    </div>
+
+                    <button class="btn btn-test" onclick="sendCommand('test')" id="testBtn">
+                        <div class="loader" id="testLoader"></div>
+                        <span class="btn-text">TEST LINK</span>
+                        <i class="fas fa-check-circle"></i>
+                    </button>
+                </div>
+
+                <!-- LEAVE ALL Command Card -->
+                <div class="command-card">
+                    <div class="card-header">
+                        <div class="card-icon icon-leave">
+                            <i class="fas fa-skull-crossbones"></i>
+                        </div>
+                        <div class="card-title">
+                            <h3>LEAVE ALL</h3>
+                            <p>Make all IDs leave all channels</p>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label><i class="fas fa-exclamation-triangle"></i> Warning</label>
+                        <p style="color: var(--text-light); font-size: 13px; margin-top: 10px; line-height: 1.5;">
+                            This command will make ALL your IDs leave ALL channels. This action cannot be undone.
+                        </p>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fas fa-hashtag"></i> Confirmation</label>
+                        <p style="color: var(--text-light); font-size: 13px; margin-top: 10px;">
+                            Enter "CONFIRM" to proceed
+                        </p>
+                        <input type="text" class="quantity-input" id="confirmLeave" placeholder="Type CONFIRM" style="width: 100%;">
+                    </div>
+
+                    <button class="btn btn-leave" onclick="showLeaveConfirm()" id="leaveBtn">
+                        <div class="loader" id="leaveLoader"></div>
+                        <span class="btn-text">LEAVE ALL CHANNELS</span>
+                        <i class="fas fa-ban"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics Panel -->
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <div class="stat-value stat-join" id="joinCount">0</div>
+                    <div class="stat-label">JOIN Commands</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value stat-pro" id="proCount">0</div>
+                    <div class="stat-label">PRO Commands</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value stat-test" id="testCount">0</div>
+                    <div class="stat-label">TEST Commands</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value stat-leave" id="leaveCount">0</div>
+                    <div class="stat-label">LEAVE Commands</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Output Panel -->
+        <div class="log-panel">
+            <div class="log-header">
+                <h3><i class="fas fa-history"></i> Command Logs</h3>
+                <div class="log-controls">
+                    <button onclick="clearLogs()"><i class="fas fa-trash"></i> Clear</button>
+                    <button onclick="refreshLogs()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    <button onclick="exportLogs()"><i class="fas fa-download"></i> Export</button>
+                </div>
+            </div>
+            <div class="log-output" id="logOutput">
+                <!-- Logs will appear here -->
+                <div class="empty-log">
+                    <i class="fas fa-terminal"></i>
+                    <p>No commands sent yet. Send your first command above.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODALS ===== -->
+    <!-- Leave Confirmation Modal -->
+    <div class="modal" id="leaveModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> CONFIRM LEAVE ALL</h3>
+            </div>
+            <div class="modal-body">
+                <p><strong style="color: var(--danger);">⚠️ WARNING:</strong> This command will make <strong>ALL</strong> your IDs leave <strong>ALL</strong> channels.</p>
+                <p>This action:</p>
+                <ul style="color: var(--text-light); margin-left: 20px; margin-bottom: 20px;">
+                    <li>Cannot be undone</li>
+                    <li>Will remove all IDs from all channels</li>
+                    <li>May take several minutes to complete</li>
+                    <li>Will stop all ongoing join operations</li>
+                </ul>
+                <p>Are you absolutely sure you want to continue?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-pro modal-btn" onclick="hideModal('leaveModal')">
+                    <i class="fas fa-times"></i> CANCEL
+                </button>
+                <button class="btn btn-leave modal-btn" onclick="sendCommand('leaveall')">
+                    <i class="fas fa-check"></i> YES, LEAVE ALL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== NOTIFICATION ===== -->
+    <div class="notification" id="notification">
+        <div class="notification-icon">
+            <i class="fas fa-info-circle"></i>
+        </div>
+        <div>
+            <div id="notificationTitle">Notification</div>
+            <div id="notificationMessage" style="font-size: 13px; color: var(--text-light);">Message content</div>
+        </div>
+    </div>
+
+    <!-- ===== FIREBASE SCRIPT ===== -->
+    <!-- Load Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBjIhypCcIFTVUTND_lMjxzkx0_ZvYJ_ZM",
+            authDomain: "kanhiya-trader.firebaseapp.com",
+            databaseURL: "https://kanhiya-trader-default-rtdb.firebaseio.com",
+            projectId: "kanhiya-trader",
+            storageBucket: "kanhiya-trader.firebasestorage.app",
+            messagingSenderId: "571774997625",
+            appId: "1:571774997625:android:0938298e3ddca14e8270a8"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Global variables
+        let currentUser = null;
+        let commandLogs = [];
+        let commandStats = {
+            join: 0,
+            pro: 0,
+            test: 0,
+            leaveall: 0
+        };
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+        });
+
+        async function initializeApp() {
+            try {
+                await checkUserSession();
+                setupFirebaseListener();
+                loadCommandHistory();
+                setupEnterKeyListeners();
+                updateConnectionStatus(true);
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showNotification('Failed to initialize application', 'error');
+            }
+        }
+
+        // ===== USER SESSION =====
+        function checkUserSession() {
+            const savedUser = localStorage.getItem('termux_user');
+            if (savedUser) {
+                try {
+                    const user = JSON.parse(savedUser);
+                    currentUser = user;
+                    
+                    // Update UI
+                    updateUserInfo();
+                    
+                    // Check if session expired
+                    if (user.expiry && user.expiry < Date.now()) {
+                        showNotification('Session expired. Please login again.', 'error');
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 2000);
+                    }
+                } catch (e) {
+                    console.error('Session error:', e);
+                    localStorage.removeItem('termux_user');
+                    window.location.href = 'index.html';
+                }
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+
+        function updateUserInfo() {
+            if (!currentUser) return;
+            
+            document.getElementById('userName').textContent = currentUser.username || 'Guest User';
+            document.getElementById('userRole').textContent = currentUser.isAdmin ? 'Admin' : 'User';
+            
+            // Set random avatar color
+            const colors = [
+                'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                'linear-gradient(135deg, #22c55e, #16a34a)',
+                'linear-gradient(135deg, #3b82f6, #2563eb)',
+                'linear-gradient(135deg, #ec4899, #db2777)',
+                'linear-gradient(135deg, #f59e0b, #d97706)'
+            ];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            document.getElementById('userAvatar').style.background = randomColor;
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('termux_user');
+                window.location.href = 'index.html';
+            }
+        }
+
+        // ===== COMMAND FUNCTIONS =====
+        async function sendCommand(type) {
+            // Get values based on command type
+            let link, qty, btnId, loaderId;
+            
+            switch(type) {
+                case 'join':
+                    link = document.getElementById('joinLink').value.trim();
+                    qty = parseInt(document.getElementById('joinQty').value) || 50;
+                    btnId = 'joinBtn';
+                    loaderId = 'joinLoader';
+                    break;
+                case 'pro':
+                    link = document.getElementById('proLink').value.trim();
+                    qty = parseInt(document.getElementById('proQty').value) || 50;
+                    btnId = 'proBtn';
+                    loaderId = 'proLoader';
+                    break;
+                case 'test':
+                    link = document.getElementById('testLink').value.trim();
+                    qty = parseInt(document.getElementById('testQty').value) || 1;
+                    btnId = 'testBtn';
+                    loaderId = 'testLoader';
+                    break;
+                case 'leaveall':
+                    link = 'ALL_CHANNELS';
+                    qty = 0;
+                    btnId = 'leaveBtn';
+                    loaderId = 'leaveLoader';
+                    hideModal('leaveModal');
+                    break;
+                default:
+                    showNotification('Invalid command type', 'error');
+                    return;
+            }
+
+            // Validate inputs for non-leave commands
+            if (type !== 'leaveall') {
+                if (!link) {
+                    showNotification(`Please enter a link for ${type.toUpperCase()} command`, 'warning');
+                    return;
+                }
+                
+                if (!qty || qty < 1) {
+                    showNotification(`Please enter valid quantity (min: 1)`, 'warning');
+                    return;
+                }
+                
+                if (qty > 1000) {
+                    showNotification(`Quantity cannot exceed 1000`, 'warning');
+                    return;
+                }
+                
+                // Validate Telegram link format
+                if (!isValidTelegramLink(link)) {
+                    showNotification('Please enter a valid Telegram link (t.me/...)', 'warning');
+                    return;
+                }
+            }
+
+            // Show loading state
+            const btn = document.getElementById(btnId);
+            const loader = document.getElementById(loaderId);
+            btn.classList.add('loading');
+            loader.style.display = 'inline-block';
+            btn.disabled = true;
+
+            try {
+                // Create command data
+                const commandData = {
+                    type: type.toUpperCase(),
+                    link: link,
+                    quantity: qty,
+                    user: currentUser.username,
+                    userId: currentUser.id || 'guest',
+                    timestamp: Date.now(),
+                    status: 'PENDING'
+                };
+
+                // Send to Firebase
+                const commandsRef = db.ref('commands');
+                const newCommandRef = commandsRef.push();
+                await newCommandRef.set(commandData);
+
+                // Update stats
+                commandStats[type]++;
+                updateStatsDisplay();
+
+                // Add to log
+                addLogEntry(type, link, qty, 'success');
+                
+                // Show success notification
+                showNotification(`${type.toUpperCase()} command sent successfully!`, 'success');
+                
+                // Clear inputs (except for leaveall)
+                if (type !== 'leaveall') {
+                    document.getElementById(type + 'Link').value = '';
+                    document.getElementById(type + 'Qty').value = type === 'test' ? '1' : '50';
+                } else {
+                    document.getElementById('confirmLeave').value = '';
+                }
+
+            } catch (error) {
+                console.error('Error sending command:', error);
+                addLogEntry(type, link, qty, 'error', error.message);
+                showNotification(`Error sending ${type.toUpperCase()} command`, 'error');
+            } finally {
+                // Reset button state
+                btn.classList.remove('loading');
+                loader.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        function isValidTelegramLink(link) {
+            // Simple Telegram link validation
+            return link.startsWith('t.me/') || link.startsWith('@') || link.includes('telegram.me/');
+        }
+
+        function showLeaveConfirm() {
+            const confirmText = document.getElementById('confirmLeave').value.trim();
+            if (confirmText !== 'CONFIRM') {
+                showNotification('Please type "CONFIRM" to proceed', 'warning');
+                return;
+            }
+            showModal('leaveModal');
+        }
+
+        // ===== LOG FUNCTIONS =====
+        function addLogEntry(type, link, qty, status, errorMsg = '') {
+            const timestamp = new Date();
+            const timeStr = timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            
+            let message = '';
+            let logClass = '';
+            
+            switch(status) {
+                case 'success':
+                    if (type === 'leaveall') {
+                        message = `✓ LEAVE ALL command sent successfully`;
+                    } else {
+                        message = `✓ ${type.toUpperCase()} command sent: ${link} (Qty: ${qty})`;
+                    }
+                    logClass = 'log-success';
+                    break;
+                case 'error':
+                    message = `✗ ${type.toUpperCase()} command failed: ${errorMsg || 'Unknown error'}`;
+                    logClass = 'log-error';
+                    break;
+                case 'warning':
+                    message = `⚠ ${type.toUpperCase()}: ${errorMsg}`;
+                    logClass = 'log-warning';
+                    break;
+                default:
+                    message = `ℹ ${type.toUpperCase()}: ${link}`;
+                    logClass = 'log-info';
+            }
+            
+            const logEntry = {
+                time: timeStr,
+                message: message,
+                class: logClass,
+                timestamp: timestamp.getTime()
+            };
+            
+            commandLogs.unshift(logEntry);
+            updateLogDisplay();
+            
+            // Save to localStorage (max 100 entries)
+            localStorage.setItem('command_logs', JSON.stringify(commandLogs.slice(0, 100)));
+        }
+
+        function updateLogDisplay() {
+            const logOutput = document.getElementById('logOutput');
+            
+            if (commandLogs.length === 0) {
+                logOutput.innerHTML = `
+                    <div class="empty-log">
+                        <i class="fas fa-terminal"></i>
+                        <p>No commands sent yet. Send your first command above.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let logHTML = '';
+            commandLogs.slice(0, 50).forEach(log => {
+                logHTML += `
+                    <div class="log-entry ${log.class}">
+                        <span class="log-time">[${log.time}]</span>
+                        <span class="log-message">${log.message}</span>
+                    </div>
+                `;
+            });
+            
+            logOutput.innerHTML = logHTML;
+            
+            // Auto-scroll to top
+            logOutput.scrollTop = 0;
+        }
+
+        function clearLogs() {
+            if (confirm('Clear all command logs?')) {
+                commandLogs = [];
+                localStorage.removeItem('command_logs');
+                updateLogDisplay();
+                showNotification('Logs cleared', 'success');
+            }
+        }
+
+        function refreshLogs() {
+            loadCommandHistory();
+            showNotification('Logs refreshed', 'info');
+        }
+
+        function exportLogs() {
+            if (commandLogs.length === 0) {
+                showNotification('No logs to export', 'warning');
+                return;
+            }
+            
+            let exportText = 'TERMUX CONTROL PANEL - COMMAND LOGS\n';
+            exportText += '====================================\n\n';
+            
+            commandLogs.forEach(log => {
+                exportText += `[${log.time}] ${log.message}\n`;
+            });
+            
+            const blob = new Blob([exportText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `termux_logs_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Logs exported successfully', 'success');
+        }
+
+        // ===== STATISTICS =====
+        function updateStatsDisplay() {
+            document.getElementById('joinCount').textContent = commandStats.join;
+            document.getElementById('proCount').textContent = commandStats.pro;
+            document.getElementById('testCount').textContent = commandStats.test;
+            document.getElementById('leaveCount').textContent = commandStats.leaveall;
+        }
+
+        async function loadCommandHistory() {
+            try {
+                // Load from Firebase
+                const commandsRef = db.ref('commands');
+                commandsRef.once('value').then((snapshot) => {
+                    const commands = snapshot.val();
+                    
+                    // Reset stats
+                    commandStats = { join: 0, pro: 0, test: 0, leaveall: 0 };
+                    
+                    if (commands) {
+                        Object.keys(commands).forEach(cmdId => {
+                            const cmd = commands[cmdId];
+                            const type = cmd.type.toLowerCase();
+                            
+                            // Count commands by type
+                            if (commandStats[type] !== undefined) {
+                                commandStats[type]++;
+                            }
+                        });
+                    }
+                    
+                    // Update display
+                    updateStatsDisplay();
+                    
+                }).catch(error => {
+                    console.error('Error loading command history:', error);
+                });
+                
+            } catch (error) {
+                console.error('Error loading command history:', error);
+            }
+        }
+
+        // ===== FIREBASE CONNECTION =====
+        function setupFirebaseListener() {
+            const connDot = document.getElementById("connDot");
+            const connStatus = document.getElementById("connStatus");
+
+            // Listen for connection state
+            const connectedRef = db.ref(".info/connected");
+            connectedRef.on("value", (snap) => {
+                if (snap.val() === true) {
+                    updateConnectionStatus(true);
+                } else {
+                    updateConnectionStatus(false);
+                }
+            });
+        }
+
+        function updateConnectionStatus(isConnected) {
+            const connDot = document.getElementById("connDot");
+            const connStatus = document.getElementById("connStatus");
+            
+            if (isConnected) {
+                connDot.classList.add("connected");
+                connStatus.textContent = "Connected to server";
+                connStatus.style.color = "#22c55e";
+            } else {
+                connDot.classList.remove("connected");
+                connStatus.textContent = "Disconnected from server";
+                connStatus.style.color = "#ef4444";
+            }
+        }
+
+        // ===== MODAL FUNCTIONS =====
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // ===== NOTIFICATION =====
+        function showNotification(message, type = 'info', title = 'Notification') {
+            const notification = document.getElementById('notification');
+            const icon = notification.querySelector('.notification-icon i');
+            const titleElement = document.getElementById('notificationTitle');
+            const messageElement = document.getElementById('notificationMessage');
+            
+            // Set content
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            // Set type-specific styling
+            notification.className = 'notification';
+            notification.classList.add(type);
+            
+            // Set icon
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle';
+            } else if (type === 'error') {
+                icon.className = 'fas fa-exclamation-triangle';
+            } else if (type === 'warning') {
+                icon.className = 'fas fa-exclamation-circle';
+            } else {
+                icon.className = 'fas fa-info-circle';
+            }
+            
+            // Show notification
+            notification.classList.add('show');
+            
+            // Auto hide after 4 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        // ===== ENTER KEY SUPPORT =====
+        function setupEnterKeyListeners() {
+            // Join command
+            document.getElementById('joinLink').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendCommand('join');
+                }
+            });
+            
+            // Pro command
+            document.getElementById('proLink').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendCommand('pro');
+                }
+            });
+            
+            // Test command
+            document.getElementById('testLink').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendCommand('test');
+                }
+            });
+            
+            // Leave confirm
+            document.getElementById('confirmLeave').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    showLeaveConfirm();
+                }
+            });
+        }
+
+        // ===== INITIAL LOAD =====
+        // Load saved logs from localStorage
+        const savedLogs = localStorage.getItem('command_logs');
+        if (savedLogs) {
+            try {
+                commandLogs = JSON.parse(savedLogs);
+                updateLogDisplay();
+            } catch (e) {
+                console.error('Error loading logs:', e);
+                localStorage.removeItem('command_logs');
+            }
+        }
+
+        // ===== GLOBAL EXPORTS =====
+        window.sendCommand = sendCommand;
+        window.showLeaveConfirm = showLeaveConfirm;
+        window.hideModal = hideModal;
+        window.clearLogs = clearLogs;
+        window.refreshLogs = refreshLogs;
+        window.exportLogs = exportLogs;
+        window.logout = logout;
+    </script>
+</body>
+</html>
